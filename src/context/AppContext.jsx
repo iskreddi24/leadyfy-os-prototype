@@ -1,9 +1,15 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   getData,
   setData,
   clearAllData
 } from '../utils/storage';
+import {
+  DEMO_CLIENT_ID,
+  DEMO_CLIENT_NAME,
+  DEMO_CONTACT_PERSON,
+  getClientScopedData
+} from '../utils/clientFilter';
 import {
   INITIAL_CLIENTS,
   INITIAL_ORDERS,
@@ -20,30 +26,89 @@ import {
   INITIAL_EMPLOYEES
 } from '../data/mockData';
 
+// Sanitization functions to ensure client isolation even with existing localStorage data
+const sanitizeInitialTickets = (tickets) => {
+  if (!Array.isArray(tickets)) return INITIAL_SUPPORT_TICKETS;
+  return tickets.map(t => {
+    if (t.clientName === 'Zing Organics' && t.clientId === 'cli-1') {
+      return { ...t, clientId: 'cli-11' };
+    }
+    return t;
+  });
+};
+
+const sanitizeInitialScripts = (scripts) => {
+  if (!Array.isArray(scripts)) return INITIAL_SCRIPTS;
+  return scripts.map(s => {
+    if ((s.title?.includes('Bloat') || s.videoNumber === 'ZO-02' || s.videoNumber === 'ZO-03') && s.clientId === 'cli-1') {
+      return { ...s, clientId: 'cli-11', orderId: 'ord-111' };
+    }
+    return s;
+  });
+};
+
+const sanitizeInitialVideos = (videos) => {
+  if (!Array.isArray(videos)) return INITIAL_VIDEOS;
+  return videos.map(v => {
+    if ((v.title?.includes('Bloat') || v.videoNumber === 'ZO-VID-02' || v.videoNumber === 'ZO-VID-03' || v.videoNumber === 'ZO-VID-04' || v.clientName === 'Zing Organics') && v.clientId === 'cli-1') {
+      return { ...v, clientId: 'cli-11', orderId: 'ord-111' };
+    }
+    return v;
+  });
+};
+
+const sanitizeInitialShoots = (shoots) => {
+  if (!Array.isArray(shoots)) return INITIAL_SHOOTS;
+  return shoots.map(sh => {
+    if (sh.title?.includes('Zing') && sh.clientId === 'cli-1') {
+      return { ...sh, clientId: 'cli-11', orderId: 'ord-111' };
+    }
+    return sh;
+  });
+};
+
+const sanitizeInitialPayments = (payments) => {
+  if (!Array.isArray(payments)) return INITIAL_PAYMENTS;
+  return payments.map(p => {
+    if (p.id === 'pay-601' && (p.companyName?.includes('Zing') || p.clientName?.includes('Singhania'))) {
+      return {
+        ...p,
+        clientId: 'cli-1',
+        clientName: 'Aditya Verma',
+        companyName: 'NovaFit Nutrition Pvt Ltd',
+        orderId: 'ord-101',
+        packageName: 'NovaFit - 20 UGC Videos',
+        invoiceNumber: 'INV-NF-101'
+      };
+    }
+    return p;
+  });
+};
+
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
   // Demo Role: 'owner' | 'admin' | 'employee' | 'client'
   const [role, setRoleState] = useState(() => getData('current_role', 'owner'));
   
-  // Active client for Client Portal prototype
-  const [activeClientId, setActiveClientId] = useState(() => getData('active_client_id', 'cli-1'));
+  // Active client for Client Portal prototype (strictly locked to DEMO_CLIENT_ID for client role)
+  const [activeClientId, setActiveClientIdState] = useState(() => getData('active_client_id', DEMO_CLIENT_ID));
 
   // Collapsible sidebar state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => getData('sidebar_collapsed', false));
 
-  // Entities stored in localStorage
+  // Entities stored in localStorage with automatic sanitization
   const [clients, setClientsState] = useState(() => getData('clients', INITIAL_CLIENTS));
   const [orders, setOrdersState] = useState(() => getData('orders', INITIAL_ORDERS));
   const [creators, setCreatorsState] = useState(() => getData('creators', INITIAL_CREATORS));
-  const [scripts, setScriptsState] = useState(() => getData('scripts', INITIAL_SCRIPTS));
-  const [shoots, setShootsState] = useState(() => getData('shoots', INITIAL_SHOOTS));
-  const [videos, setVideosState] = useState(() => getData('videos', INITIAL_VIDEOS));
+  const [scripts, setScriptsState] = useState(() => sanitizeInitialScripts(getData('scripts', INITIAL_SCRIPTS)));
+  const [shoots, setShootsState] = useState(() => sanitizeInitialShoots(getData('shoots', INITIAL_SHOOTS)));
+  const [videos, setVideosState] = useState(() => sanitizeInitialVideos(getData('videos', INITIAL_VIDEOS)));
   const [tasks, setTasksState] = useState(() => getData('tasks', INITIAL_TASKS));
-  const [payments, setPaymentsState] = useState(() => getData('payments', INITIAL_PAYMENTS));
+  const [payments, setPaymentsState] = useState(() => sanitizeInitialPayments(getData('payments', INITIAL_PAYMENTS)));
   const [expenses, setExpensesState] = useState(() => getData('expenses', INITIAL_EXPENSES));
   const [creatorPayouts, setCreatorPayoutsState] = useState(() => getData('creator_payouts', INITIAL_CREATOR_PAYOUTS));
-  const [supportTickets, setSupportTicketsState] = useState(() => getData('support_tickets', INITIAL_SUPPORT_TICKETS));
+  const [supportTickets, setSupportTicketsState] = useState(() => sanitizeInitialTickets(getData('support_tickets', INITIAL_SUPPORT_TICKETS)));
   const [notifications, setNotificationsState] = useState(() => getData('notifications', INITIAL_NOTIFICATIONS));
   const [employees] = useState(INITIAL_EMPLOYEES);
 
@@ -86,6 +151,16 @@ export function AppProvider({ children }) {
     });
   };
 
+  const setActiveClientId = (id) => {
+    if (role === 'client') {
+      setActiveClientIdState(DEMO_CLIENT_ID);
+      setData('active_client_id', DEMO_CLIENT_ID);
+      return;
+    }
+    setActiveClientIdState(id);
+    setData('active_client_id', id);
+  };
+
   const closeConfirm = () => {
     setConfirmModal(prev => ({ ...prev, isOpen: false, onConfirm: null }));
   };
@@ -94,6 +169,10 @@ export function AppProvider({ children }) {
   const setRole = (newRole) => {
     setRoleState(newRole);
     setData('current_role', newRole);
+    if (newRole === 'client') {
+      setActiveClientIdState(DEMO_CLIENT_ID);
+      setData('active_client_id', DEMO_CLIENT_ID);
+    }
     showToast(`Switched view to ${newRole.toUpperCase()} mode`, 'Role context updated', 'info');
   };
 
@@ -634,12 +713,23 @@ export function AppProvider({ children }) {
 
   // Operations: Support Tickets
   const addSupportTicket = (ticketData) => {
+    const isClient = role === 'client';
+    const effectiveId = isClient ? DEMO_CLIENT_ID : (ticketData.clientId || activeClientId || DEMO_CLIENT_ID);
+    const clientRecord = clients.find(c => c.id === effectiveId) || {
+      companyName: DEMO_CLIENT_NAME,
+      clientName: DEMO_CONTACT_PERSON
+    };
+
     const newTicket = {
       id: `TK-${Date.now().toString().slice(-3)}`,
+      clientId: effectiveId,
+      clientName: ticketData.clientName || clientRecord.companyName || clientRecord.clientName || DEMO_CLIENT_NAME,
+      contactPerson: ticketData.contactPerson || clientRecord.clientName || DEMO_CONTACT_PERSON,
       createdDate: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
       status: 'Open',
       messages: [],
-      ...ticketData
+      ...ticketData,
+      ...(isClient ? { clientId: DEMO_CLIENT_ID } : {})
     };
     setSupportTickets(prev => [newTicket, ...prev]);
     showToast('Ticket Created', `Support ticket #${newTicket.id} logged.`);
@@ -717,6 +807,22 @@ export function AppProvider({ children }) {
     showConfirm(config);
   };
 
+  // Scoped data calculation for Client view & isolation
+  const effectiveClientId = role === 'client' ? DEMO_CLIENT_ID : activeClientId;
+
+  const clientScopedData = useMemo(() => {
+    return getClientScopedData({
+      clientId: effectiveClientId,
+      orders,
+      scripts,
+      videos,
+      shoots,
+      payments,
+      supportTickets,
+      notifications
+    });
+  }, [effectiveClientId, orders, scripts, videos, shoots, payments, supportTickets, notifications]);
+
   return (
     <AppContext.Provider
       value={{
@@ -725,14 +831,29 @@ export function AppProvider({ children }) {
         setRole,
         currentRole: role,
         setCurrentRole: setRole,
-        activeClientId,
+        activeClientId: effectiveClientId,
         setActiveClientId,
-        activeClient: clients.find(c => c.id === activeClientId) || clients[0],
+        activeClient: clients.find(c => c.id === effectiveClientId) || clients[0],
+        demoClientId: DEMO_CLIENT_ID,
+        demoClientName: DEMO_CLIENT_NAME,
         employees,
         isSidebarCollapsed,
         toggleSidebar,
 
-        // Data Collections
+        // Scoped Data for Client Role
+        clientScopedData,
+        getClientScopedData: (customId) => getClientScopedData({
+          clientId: customId || effectiveClientId,
+          orders,
+          scripts,
+          videos,
+          shoots,
+          payments,
+          supportTickets,
+          notifications
+        }),
+
+        // Data Collections (Full Internal Sets for Agency Staff)
         clients,
         orders,
         creators,

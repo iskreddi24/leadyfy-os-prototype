@@ -133,21 +133,14 @@ export default function Topbar({
 
       {/* Right: Role Switcher, Quick Add, Notifications */}
       <div className="flex items-center gap-2.5 sm:gap-3">
-        {/* If Role is Client, show Client selector */}
+        {/* Fixed Client Context - strictly locked to NovaFit Nutrition Pvt Ltd with NO dropdown */}
         {role === 'client' && (
-          <div className="hidden md:flex items-center gap-2 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl text-xs">
-            <span className="text-amber-800 font-semibold">Viewing as:</span>
-            <select
-              value={activeClientId}
-              onChange={(e) => setActiveClientId(e.target.value)}
-              className="bg-transparent font-bold text-amber-950 focus:outline-hidden cursor-pointer"
-            >
-              {clients.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.companyName || c.clientName}
-                </option>
-              ))}
-            </select>
+          <div className="flex items-center gap-2 bg-amber-50/90 border border-amber-200/80 px-3 py-1.5 rounded-xl text-xs shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="font-bold text-stone-900 tracking-tight">NovaFit Nutrition Pvt Ltd</span>
+            <span className="text-[10px] uppercase font-bold text-amber-800 bg-amber-200/70 px-1.5 py-0.5 rounded-md">
+              Client Portal
+            </span>
           </div>
         )}
 
@@ -218,42 +211,53 @@ export default function Topbar({
           )}
         </div>
 
-        {/* Quick Add Action Menu */}
-        <div className="relative" ref={quickAddRef}>
+        {/* Quick Add Action Menu (Internal Team) or Ticket Button (Client) */}
+        {role === 'client' ? (
           <button
-            onClick={() => setShowQuickAddDropdown(prev => !prev)}
+            onClick={() => onOpenQuickAdd('ticket')}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs shadow-xs transition-colors cursor-pointer"
+            title="Open support ticket"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span className="hidden sm:inline">New</span>
+            <span className="hidden sm:inline">Open Ticket</span>
           </button>
+        ) : (
+          <div className="relative" ref={quickAddRef}>
+            <button
+              onClick={() => setShowQuickAddDropdown(prev => !prev)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span className="hidden sm:inline">New</span>
+            </button>
 
-          {showQuickAddDropdown && (
-            <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-stone-200 shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
-              <div className="px-3 py-1.5 text-[11px] font-bold text-stone-400 uppercase tracking-wider">
-                Create New Entry
+            {showQuickAddDropdown && (
+              <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-stone-200 shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-1.5 text-[11px] font-bold text-stone-400 uppercase tracking-wider">
+                  Create New Entry
+                </div>
+                <div className="space-y-0.5">
+                  {quickActions.map((qa, i) => {
+                    const Icon = qa.icon;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setShowQuickAddDropdown(false);
+                          qa.action();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-100 rounded-xl transition-colors text-left cursor-pointer"
+                      >
+                        <Icon className="w-4 h-4 text-amber-600" />
+                        <span>{qa.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="space-y-0.5">
-                {quickActions.map((qa, i) => {
-                  const Icon = qa.icon;
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setShowQuickAddDropdown(false);
-                        qa.action();
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-100 rounded-xl transition-colors text-left cursor-pointer"
-                    >
-                      <Icon className="w-4 h-4 text-amber-600" />
-                      <span>{qa.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Notification Bell */}
         <div className="relative" ref={notifRef}>

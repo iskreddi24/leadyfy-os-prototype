@@ -15,9 +15,11 @@ import Modal from '../components/common/Modal';
 
 export default function Payments() {
   const {
+    role,
     payments,
     clients,
     orders,
+    clientScopedData,
     addPayment,
     updatePaymentStatus,
     totalRevenue,
@@ -25,13 +27,16 @@ export default function Payments() {
     notify
   } = useApp();
 
+  const isClientRole = role === 'client';
+  const effectivePayments = isClientRole ? (clientScopedData?.payments || []) : payments;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const [paymentForm, setPaymentForm] = useState({
     invoiceNumber: `INV-2026-${Math.floor(100 + Math.random() * 899)}`,
-    clientId: clients[0]?.id || '',
+    clientId: isClientRole ? 'cli-1' : (clients[0]?.id || ''),
     packageName: 'Scale 15x UGC Video Sprint',
     totalAmount: 212400,
     amountPaid: 100000,
@@ -42,7 +47,7 @@ export default function Payments() {
   });
 
   const filteredPayments = useMemo(() => {
-    return payments.filter(p => {
+    return effectivePayments.filter(p => {
       const matchesSearch =
         p.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.clientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -51,7 +56,7 @@ export default function Payments() {
       const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [payments, searchQuery, statusFilter]);
+  }, [effectivePayments, searchQuery, statusFilter]);
 
   const handleCreatePayment = (e) => {
     e.preventDefault();
@@ -79,6 +84,10 @@ export default function Payments() {
     });
   };
 
+  // Client-scoped financial totals
+  const clientPaidAmount = effectivePayments.reduce((s, p) => s + (p.amountPaid || 0), 0);
+  const clientBalanceDue = effectivePayments.reduce((s, p) => s + (p.balance || 0), 0);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -86,45 +95,65 @@ export default function Payments() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold uppercase tracking-wider text-amber-600">
-              Agency Accounts
+              {isClientRole ? 'NovaFit Billing' : 'Agency Accounts'}
             </span>
             <span className="text-stone-300">•</span>
-            <span className="text-xs text-stone-500 font-medium">Receivables & Invoicing</span>
+            <span className="text-xs text-stone-500 font-medium">
+              {isClientRole ? 'GST Invoices' : 'Receivables & Invoicing'}
+            </span>
           </div>
           <h1 className="text-2xl font-black text-stone-900 tracking-tight">
-            Client Invoices & Billing
+            {isClientRole ? 'My Invoices & Billing Statements' : 'Client Invoices & Billing'}
           </h1>
           <p className="text-xs text-stone-500 mt-0.5">
-            Monitor client billing tranches, advance milestone collections, and overdue receivables.
+            {isClientRole
+              ? 'View and download GST tax invoices, advance milestone receipts, and payment ledger.'
+              : 'Monitor client billing tranches, advance milestone collections, and overdue receivables.'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Generate Invoice</span>
-          </button>
-        </div>
+        {!isClientRole && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Generate Invoice</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-stone-200">
-          <span className="text-xs font-bold text-stone-500 uppercase">Total Collected Revenue</span>
-          <p className="text-2xl font-black text-emerald-600 mt-1">₹{totalRevenue.toLocaleString('en-IN')}</p>
-          <span className="text-[11px] text-stone-400">Total cleared advance and milestones</span>
+          <span className="text-xs font-bold text-stone-500 uppercase">
+            {isClientRole ? 'Total Amount Paid' : 'Total Collected Revenue'}
+          </span>
+          <p className="text-2xl font-black text-emerald-600 mt-1">
+            ₹{(isClientRole ? clientPaidAmount : totalRevenue).toLocaleString('en-IN')}
+          </p>
+          <span className="text-[11px] text-stone-400">
+            {isClientRole ? 'Cleared to agency via bank/card' : 'Total cleared advance and milestones'}
+          </span>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-stone-200">
-          <span className="text-xs font-bold text-stone-500 uppercase">Outstanding Receivables</span>
-          <p className="text-2xl font-black text-amber-600 mt-1">₹{totalReceivables.toLocaleString('en-IN')}</p>
-          <span className="text-[11px] text-stone-400">Pending final delivery clearance</span>
+          <span className="text-xs font-bold text-stone-500 uppercase">
+            {isClientRole ? 'Pending Due Balance' : 'Outstanding Receivables'}
+          </span>
+          <p className="text-2xl font-black text-amber-600 mt-1">
+            ₹{(isClientRole ? clientBalanceDue : totalReceivables).toLocaleString('en-IN')}
+          </p>
+          <span className="text-[11px] text-stone-400">
+            {isClientRole ? 'Due on final video delivery sign-off' : 'Pending final delivery clearance'}
+          </span>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-stone-200">
-          <span className="text-xs font-bold text-stone-500 uppercase">Active Invoices</span>
-          <p className="text-2xl font-black text-stone-900 mt-1">{payments.length}</p>
+          <span className="text-xs font-bold text-stone-500 uppercase">
+            {isClientRole ? 'Total Invoices Issued' : 'Active Invoices'}
+          </span>
+          <p className="text-2xl font-black text-stone-900 mt-1">{effectivePayments.length}</p>
           <span className="text-[11px] text-stone-400">Issued for UGC video packages</span>
         </div>
       </div>

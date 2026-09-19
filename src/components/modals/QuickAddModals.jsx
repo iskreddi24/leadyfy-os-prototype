@@ -13,8 +13,20 @@ export default function QuickAddModals({ activeModal, onClose }) {
     addScript,
     addShoot,
     addVideo,
-    addTask
+    addTask,
+    addSupportTicket,
+    role,
+    activeClientId,
+    notify
   } = useApp();
+
+  // Ticket Form State
+  const [ticketForm, setTicketForm] = useState({
+    subject: '',
+    category: 'Video Revision',
+    priority: 'High',
+    message: ''
+  });
 
   // Client Form State
   const [clientForm, setClientForm] = useState({
@@ -729,6 +741,114 @@ export default function QuickAddModals({ activeModal, onClose }) {
                 className="px-4 py-2 text-xs font-bold text-black bg-amber-500 hover:bg-amber-600 rounded-lg cursor-pointer shadow-xs"
               >
                 Create Task
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Quick Add Ticket Modal (for Client or Support) */}
+      {activeModal === 'ticket' && (
+        <Modal
+          isOpen={true}
+          onClose={onClose}
+          title="Open New Support Ticket"
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              addSupportTicket({
+                clientId: role === 'client' ? 'cli-1' : activeClientId,
+                clientName: 'NovaFit Nutrition Pvt Ltd',
+                subject: ticketForm.subject,
+                category: ticketForm.category,
+                priority: ticketForm.priority,
+                message: ticketForm.message,
+                status: 'Open'
+              });
+              notify({
+                title: 'Ticket Submitted',
+                message: 'Your ticket has been dispatched to the agency team.',
+                type: 'success'
+              });
+              setTicketForm({ subject: '', category: 'Video Revision', priority: 'High', message: '' });
+              onClose();
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1">Client Account</label>
+              <div className="text-xs font-bold text-stone-900 bg-stone-100 px-3 py-2 rounded-lg border border-stone-200">
+                NovaFit Nutrition Pvt Ltd
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Category</label>
+                <select
+                  value={ticketForm.category}
+                  onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg bg-white"
+                >
+                  <option>Video Revision</option>
+                  <option>Rush Delivery Request</option>
+                  <option>Script Adjustments</option>
+                  <option>Invoicing & Billing</option>
+                  <option>General Support</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Priority</label>
+                <select
+                  value={ticketForm.priority}
+                  onChange={(e) => setTicketForm({ ...ticketForm, priority: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg bg-white"
+                >
+                  <option>High</option>
+                  <option>Medium</option>
+                  <option>Low</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1">Subject *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Question regarding Video 01 hook cut"
+                value={ticketForm.subject}
+                onChange={(e) => setTicketForm({ ...ticketForm, subject: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1">Message *</label>
+              <textarea
+                rows={3}
+                required
+                placeholder="Describe your request or question in detail..."
+                value={ticketForm.message}
+                onChange={(e) => setTicketForm({ ...ticketForm, message: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-stone-200">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs font-medium text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-xs font-bold text-black bg-amber-500 hover:bg-amber-600 rounded-lg cursor-pointer shadow-xs"
+              >
+                Submit Ticket
               </button>
             </div>
           </form>

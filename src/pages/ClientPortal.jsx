@@ -19,12 +19,13 @@ import Modal from '../components/common/Modal';
 
 export default function ClientPortal() {
   const {
+    role,
     activeClientId,
-    setActiveClientId,
     clients,
     orders,
     scripts,
     videos,
+    clientScopedData,
     updateScriptStatus,
     updateVideoStage,
     addVideoFeedback,
@@ -32,13 +33,16 @@ export default function ClientPortal() {
     notify
   } = useApp();
 
-  // Find active client details
-  const activeClient = clients.find(c => c.id === activeClientId) || clients[0];
+  const isClientRole = role === 'client';
+  const effectiveClientId = isClientRole ? 'cli-1' : activeClientId;
 
-  // Filter orders, scripts, videos for this client
-  const clientOrders = orders.filter(o => o.clientId === activeClient?.id);
-  const clientScripts = scripts.filter(s => s.clientId === activeClient?.id);
-  const clientVideos = videos.filter(v => v.clientId === activeClient?.id);
+  // Find active client details
+  const activeClient = clients.find(c => c.id === effectiveClientId) || clients[0];
+
+  // Scoped data for this client
+  const clientOrders = isClientRole ? (clientScopedData?.orders || []) : orders.filter(o => o.clientId === effectiveClientId);
+  const clientScripts = isClientRole ? (clientScopedData?.scripts || []) : scripts.filter(s => s.clientId === effectiveClientId);
+  const clientVideos = isClientRole ? (clientScopedData?.videos || []) : videos.filter(v => v.clientId === effectiveClientId);
 
   // Quota metrics
   const totalContractedVideos = clientOrders.reduce((sum, o) => sum + (o.contractedVideoCount || 0), 0);
@@ -105,20 +109,15 @@ export default function ClientPortal() {
   const handleTicketSubmit = (e) => {
     e.preventDefault();
     addSupportTicket({
-      clientId: activeClient?.id,
-      clientName: activeClient?.companyName || activeClient?.clientName,
+      clientId: effectiveClientId,
+      clientName: activeClient?.companyName || activeClient?.clientName || 'NovaFit Nutrition Pvt Ltd',
+      contactPerson: activeClient?.clientName || 'Aditya Verma',
       subject: ticketForm.subject,
       category: ticketForm.category,
       priority: ticketForm.priority,
       status: 'Open',
-      messages: [
-        {
-          author: activeClient?.clientName,
-          role: 'Client',
-          time: 'Just now',
-          text: ticketForm.message
-        }
-      ]
+      message: ticketForm.message,
+      description: ticketForm.message
     });
     setShowTicketModal(false);
     setTicketForm({ subject: '', category: 'Video Revision', priority: 'Medium', message: '' });
@@ -136,28 +135,18 @@ export default function ClientPortal() {
             <span className="text-xs text-stone-500 font-medium">Real-Time Production Workspace</span>
           </div>
           <h1 className="text-2xl font-black text-stone-900 tracking-tight">
-            Welcome, {activeClient?.clientName || 'Partner'}
+            Welcome, {activeClient?.clientName || 'Aditya Verma'}
           </h1>
           <p className="text-xs text-stone-500 mt-1">
-            Review scripts, view video cuts, timestamp feedback, and download high-resolution masters for <strong>{activeClient?.companyName}</strong>.
+            Review scripts, view video cuts, timestamp feedback, and download high-resolution masters for <strong>{activeClient?.companyName || 'NovaFit Nutrition Pvt Ltd'}</strong>.
           </p>
         </div>
 
-        {/* Client Switcher (for testing multiple clients in prototype) */}
+        {/* Verified Client Badge & Actions (No cross-client switching permitted) */}
         <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <span className="text-[11px] font-semibold text-stone-400 uppercase block">Switch Client Account</span>
-            <select
-              value={activeClientId}
-              onChange={(e) => setActiveClientId(e.target.value)}
-              className="mt-0.5 text-xs font-bold text-stone-900 bg-stone-50 border border-stone-300 rounded-lg px-2.5 py-1.5 focus:ring-amber-500 focus:border-amber-500 cursor-pointer"
-            >
-              {clients.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.companyName || c.clientName}
-                </option>
-              ))}
-            </select>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-stone-100 border border-stone-200 text-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-bold text-stone-800">{activeClient?.companyName || 'NovaFit Nutrition Pvt Ltd'}</span>
           </div>
 
           <button

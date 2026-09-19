@@ -18,14 +18,19 @@ import Modal from '../components/common/Modal';
 
 export default function Scripts() {
   const {
+    role,
     scripts,
     clients,
     creators,
+    clientScopedData,
     addScript,
     updateScript,
     updateScriptStatus,
     notify
   } = useApp();
+
+  const isClientRole = role === 'client';
+  const effectiveScripts = isClientRole ? (clientScopedData?.scripts || []) : scripts;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -37,7 +42,7 @@ export default function Scripts() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const [newScriptForm, setNewScriptForm] = useState({
-    clientId: clients[0]?.id || '',
+    clientId: isClientRole ? 'cli-1' : (clients[0]?.id || ''),
     videoNumber: `ZO-${Math.floor(10 + Math.random() * 89)}`,
     title: '',
     writer: 'Rahul Verma',
@@ -49,7 +54,7 @@ export default function Scripts() {
   });
 
   const filteredScripts = useMemo(() => {
-    return scripts.filter(s => {
+    return effectiveScripts.filter(s => {
       const matchesSearch =
         s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.videoNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -57,11 +62,11 @@ export default function Scripts() {
         s.creatorName?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
-      const matchesClient = clientFilter === 'All' || s.clientId === clientFilter;
+      const matchesClient = isClientRole || clientFilter === 'All' || s.clientId === clientFilter;
 
       return matchesSearch && matchesStatus && matchesClient;
     });
-  }, [scripts, searchQuery, statusFilter, clientFilter]);
+  }, [effectiveScripts, searchQuery, statusFilter, clientFilter, isClientRole]);
 
   const scriptStatuses = [
     'All',
@@ -105,28 +110,32 @@ export default function Scripts() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold uppercase tracking-wider text-amber-600">
-              Creative Development
+              {isClientRole ? 'NovaFit Script Approvals' : 'Creative Development'}
             </span>
             <span className="text-stone-300">•</span>
             <span className="text-xs text-stone-500 font-medium">UGC Copywriting</span>
           </div>
           <h1 className="text-2xl font-black text-stone-900 tracking-tight">
-            Scripting & Concept Approvals
+            {isClientRole ? 'My Scripts & Angles' : 'Scripting & Concept Approvals'}
           </h1>
           <p className="text-xs text-stone-500 mt-0.5">
-            Craft 3-second visual hooks, UGC story angles, client reviews, and director notes for creators.
+            {isClientRole
+              ? 'Review hooks, call-to-actions, angles, and approve scripts for production shoots.'
+              : 'Craft 3-second visual hooks, UGC story angles, client reviews, and director notes for creators.'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Draft New Script</span>
-          </button>
-        </div>
+        {!isClientRole && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Draft New Script</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Filters Bar */}

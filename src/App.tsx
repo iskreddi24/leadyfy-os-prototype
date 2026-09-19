@@ -22,9 +22,16 @@ import SupportTickets from './pages/SupportTickets';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 
-function RoleRouteWrapper({ children }: { children: React.ReactNode }) {
+function RootRoute() {
   const { role } = useApp();
-  // If role is set to client and visiting root, we could either show ClientPortal or let user access with layout
+  return role === 'client' ? <ClientPortal /> : <Dashboard />;
+}
+
+function AgencyOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { role } = useApp();
+  if (role === 'client') {
+    return <Navigate to="/portal" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -34,23 +41,23 @@ export default function App() {
       <BrowserRouter>
         <Layout>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<RootRoute />} />
             <Route path="/portal" element={<ClientPortal />} />
-            <Route path="/clients" element={<Clients />} />
-            <Route path="/clients/:id" element={<ClientDetails />} />
+            <Route path="/clients" element={<AgencyOnlyRoute><Clients /></AgencyOnlyRoute>} />
+            <Route path="/clients/:id" element={<AgencyOnlyRoute><ClientDetails /></AgencyOnlyRoute>} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/:id" element={<OrderDetails />} />
             <Route path="/scripts" element={<Scripts />} />
-            <Route path="/creators" element={<Creators />} />
-            <Route path="/shoots" element={<Shoots />} />
+            <Route path="/creators" element={<AgencyOnlyRoute><Creators /></AgencyOnlyRoute>} />
+            <Route path="/shoots" element={<AgencyOnlyRoute><Shoots /></AgencyOnlyRoute>} />
             <Route path="/videos" element={<Videos />} />
-            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/tasks" element={<AgencyOnlyRoute><Tasks /></AgencyOnlyRoute>} />
             <Route path="/payments" element={<Payments />} />
-            <Route path="/expenses" element={<Expenses />} />
-            <Route path="/creator-payouts" element={<CreatorPayouts />} />
+            <Route path="/expenses" element={<AgencyOnlyRoute><Expenses /></AgencyOnlyRoute>} />
+            <Route path="/creator-payouts" element={<AgencyOnlyRoute><CreatorPayouts /></AgencyOnlyRoute>} />
             <Route path="/support-tickets" element={<SupportTickets />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/reports" element={<AgencyOnlyRoute><Reports /></AgencyOnlyRoute>} />
+            <Route path="/settings" element={<AgencyOnlyRoute><Settings /></AgencyOnlyRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>

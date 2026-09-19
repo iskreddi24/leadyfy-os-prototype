@@ -31,18 +31,25 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
     shoots,
     videos,
     tasks,
-    supportTickets
+    supportTickets,
+    clientScopedData
   } = useApp();
 
   const location = useLocation();
+  const isClientRole = role === 'client';
 
-  // Badges calculation
-  const pendingScriptsCount = scripts.filter(s => s.status === 'In Review' || s.status === 'Sent to Client').length;
-  const inProgressVideosCount = videos.filter(v => v.stage === 'Client Review' || v.stage === 'Video Editing').length;
-  const urgentTasksCount = tasks.filter(t => t.priority === 'Urgent' && t.status !== 'Done').length;
-  const openTicketsCount = supportTickets.filter(t => t.status === 'Open').length;
+  // Badges calculation - scoped to client if role is client
+  const activeScripts = isClientRole ? (clientScopedData?.scripts || []) : scripts;
+  const activeVideos = isClientRole ? (clientScopedData?.videos || []) : videos;
+  const activeTickets = isClientRole ? (clientScopedData?.supportTickets || []) : supportTickets;
 
-  const navItems = [
+  const pendingScriptsCount = activeScripts.filter(s => s.status === 'In Review' || s.status === 'Sent to Client').length;
+  const inProgressVideosCount = activeVideos.filter(v => v.stage === 'Client Review' || v.stage === 'Video Editing' || v.stage === 'Revision').length;
+  const urgentTasksCount = isClientRole ? 0 : tasks.filter(t => t.priority === 'Urgent' && t.status !== 'Done').length;
+  const openTicketsCount = activeTickets.filter(t => t.status === 'Open').length;
+
+  // Agency Staff Navigation
+  const agencyNavItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/clients', label: 'Clients', icon: Users },
     { path: '/orders', label: 'Orders', icon: Package },
@@ -58,8 +65,17 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
     { path: '/reports', label: 'Reports', icon: BarChart3 }
   ];
 
-  // If role is strictly Client, give priority to client portal link
-  const isClientRole = role === 'client';
+  // Dedicated Client Portal Navigation (Strict Isolation)
+  const clientNavItems = [
+    { path: '/portal', label: 'Client Dashboard', icon: LayoutDashboard },
+    { path: '/orders', label: 'My Orders', icon: Package },
+    { path: '/scripts', label: 'My Scripts', icon: FileText, badge: pendingScriptsCount ? `${pendingScriptsCount}` : null },
+    { path: '/videos', label: 'My Videos', icon: Film, badge: inProgressVideosCount ? `${inProgressVideosCount}` : null, highlight: true },
+    { path: '/payments', label: 'My Invoices', icon: CreditCard },
+    { path: '/support-tickets', label: 'My Support Tickets', icon: LifeBuoy, badge: openTicketsCount ? `${openTicketsCount}` : null }
+  ];
+
+  const navItems = isClientRole ? clientNavItems : agencyNavItems;
 
   return (
     <>
@@ -172,17 +188,19 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
 
         {/* Bottom Section: Settings & User Identity */}
         <div className="p-3 border-t border-stone-800/80 space-y-2 shrink-0">
-          <NavLink
-            to="/settings"
-            onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-stone-400 hover:text-white hover:bg-stone-800/80 transition-colors ${
-              location.pathname === '/settings' ? 'bg-stone-800 text-white font-bold' : ''
-            } ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
-            title="Settings & System Config"
-          >
-            <Settings className="w-4.5 h-4.5 text-stone-400 shrink-0" />
-            {!isSidebarCollapsed && <span>Settings & Logs</span>}
-          </NavLink>
+          {!isClientRole && (
+            <NavLink
+              to="/settings"
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-stone-400 hover:text-white hover:bg-stone-800/80 transition-colors ${
+                location.pathname === '/settings' ? 'bg-stone-800 text-white font-bold' : ''
+              } ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
+              title="Settings & System Config"
+            >
+              <Settings className="w-4.5 h-4.5 text-stone-400 shrink-0" />
+              {!isSidebarCollapsed && <span>Settings & Logs</span>}
+            </NavLink>
+          )}
 
           {/* Current Persona Badge */}
           <div
@@ -191,21 +209,21 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             }`}
           >
             <div className="w-8 h-8 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center text-xs font-bold text-amber-400 shrink-0 uppercase">
-              {role.slice(0, 2)}
+              {role === 'client' ? 'NV' : role.slice(0, 2)}
             </div>
             {!isSidebarCollapsed && (
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-white capitalize truncate">
+                <p className="text-xs font-bold text-white truncate">
                   {role === 'owner'
                     ? 'Vikram Malhotra'
                     : role === 'admin'
                     ? 'Ananya Sharma'
                     : role === 'employee'
                     ? 'Rohan Mehta'
-                    : 'Aditya Singhania'}
+                    : 'Aditya Verma'}
                 </p>
                 <p className="text-[10px] text-amber-400 font-semibold uppercase tracking-wider">
-                  Role: {role}
+                  {role === 'client' ? 'NovaFit Nutrition' : `Role: ${role}`}
                 </p>
               </div>
             )}

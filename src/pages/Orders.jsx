@@ -15,14 +15,17 @@ import Badge from '../components/common/Badge';
 import ProgressBar from '../components/common/ProgressBar';
 
 export default function Orders() {
-  const { orders, clients, videos } = useApp();
+  const { role, orders, clients, videos, clientScopedData } = useApp();
   const navigate = useNavigate();
+
+  const isClientRole = role === 'client';
+  const effectiveOrders = isClientRole ? (clientScopedData?.orders || []) : orders;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
+    return effectiveOrders.filter(order => {
       const matchesSearch =
         order.packageName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         order.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -31,13 +34,13 @@ export default function Orders() {
       const matchesStatus = statusFilter === 'All' || order.orderStatus === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [orders, searchQuery, statusFilter]);
+  }, [effectiveOrders, searchQuery, statusFilter]);
 
   // Aggregate stats
-  const totalPackagesValue = orders.reduce((sum, o) => sum + (o.totalInvoiceAmount || 0), 0);
-  const totalCollected = orders.reduce((sum, o) => sum + (o.amountReceived || 0), 0);
-  const totalBalance = orders.reduce((sum, o) => sum + (o.outstandingBalance || 0), 0);
-  const totalVideosOrdered = orders.reduce((sum, o) => sum + (o.contractedVideoCount || 0), 0);
+  const totalPackagesValue = effectiveOrders.reduce((sum, o) => sum + (o.totalInvoiceAmount || 0), 0);
+  const totalCollected = effectiveOrders.reduce((sum, o) => sum + (o.amountReceived || 0), 0);
+  const totalBalance = effectiveOrders.reduce((sum, o) => sum + (o.outstandingBalance || 0), 0);
+  const totalVideosOrdered = effectiveOrders.reduce((sum, o) => sum + (o.contractedVideoCount || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -46,49 +49,61 @@ export default function Orders() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold uppercase tracking-wider text-amber-600">
-              Contract Fulfillment
+              {isClientRole ? 'NovaFit Deliverables' : 'Contract Fulfillment'}
             </span>
             <span className="text-stone-300">•</span>
             <span className="text-xs text-stone-500 font-medium">Sprint Deliverables</span>
           </div>
           <h1 className="text-2xl font-black text-stone-900 tracking-tight">
-            Client Packages & Orders
+            {isClientRole ? 'My Video Orders & Packages' : 'Client Packages & Orders'}
           </h1>
           <p className="text-xs text-stone-500 mt-0.5">
-            Track contracted video counts, advance milestones, GST invoices, and production sprint timelines.
+            {isClientRole
+              ? 'Track your contracted video counts, delivered reels, remaining quota, and invoice status.'
+              : 'Track contracted video counts, advance milestones, GST invoices, and production sprint timelines.'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate('/orders/new')}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Create Package Order</span>
-          </button>
-        </div>
+        {!isClientRole && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/orders/new')}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Create Package Order</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Financial Snapshot */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-stone-200">
-          <span className="text-xs font-bold text-stone-500 uppercase">Total Contract Value</span>
+          <span className="text-xs font-bold text-stone-500 uppercase">
+            {isClientRole ? 'My Contract Value' : 'Total Contract Value'}
+          </span>
           <p className="text-xl font-extrabold text-stone-900 mt-1">₹{totalPackagesValue.toLocaleString('en-IN')}</p>
-          <span className="text-[11px] text-stone-400">Across {orders.length} packages</span>
+          <span className="text-[11px] text-stone-400">Across {effectiveOrders.length} packages</span>
         </div>
         <div className="bg-white p-4 rounded-xl border border-stone-200">
-          <span className="text-xs font-bold text-stone-500 uppercase">Advance Collected</span>
+          <span className="text-xs font-bold text-stone-500 uppercase">
+            {isClientRole ? 'Paid to Date' : 'Advance Collected'}
+          </span>
           <p className="text-xl font-extrabold text-emerald-600 mt-1">₹{totalCollected.toLocaleString('en-IN')}</p>
-          <span className="text-[11px] text-stone-400">Cash received in bank</span>
+          <span className="text-[11px] text-stone-400">Paid amount</span>
         </div>
         <div className="bg-white p-4 rounded-xl border border-stone-200">
-          <span className="text-xs font-bold text-stone-500 uppercase">Outstanding Balance</span>
+          <span className="text-xs font-bold text-stone-500 uppercase">
+            {isClientRole ? 'Remaining Balance' : 'Outstanding Balance'}
+          </span>
           <p className="text-xl font-extrabold text-amber-600 mt-1">₹{totalBalance.toLocaleString('en-IN')}</p>
           <span className="text-[11px] text-stone-400">Due on delivery sign-off</span>
         </div>
         <div className="bg-white p-4 rounded-xl border border-stone-200">
-          <span className="text-xs font-bold text-stone-500 uppercase">Total Video Deliverables</span>
+          <span className="text-xs font-bold text-stone-500 uppercase">
+            {isClientRole ? 'Total Contracted Reels' : 'Total Video Deliverables'}
+          </span>
           <p className="text-xl font-extrabold text-stone-900 mt-1">{totalVideosOrdered} Reels</p>
           <span className="text-[11px] text-stone-400">Contracted UGC volume</span>
         </div>

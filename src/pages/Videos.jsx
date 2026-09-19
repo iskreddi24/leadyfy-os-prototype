@@ -35,15 +35,20 @@ export const PRODUCTION_STAGES = [
 
 export default function Videos() {
   const {
+    role,
     videos,
     clients,
     creators,
     scripts,
     employees,
+    clientScopedData,
     updateVideoStage,
     addVideoFeedback,
     notify
   } = useApp();
+
+  const isClientRole = role === 'client';
+  const effectiveVideos = isClientRole ? (clientScopedData?.videos || []) : videos;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [clientFilter, setClientFilter] = useState('All');
@@ -55,7 +60,7 @@ export default function Videos() {
   const [feedbackTimestamp, setFeedbackTimestamp] = useState('00:05');
 
   const filteredVideos = useMemo(() => {
-    return videos.filter(v => {
+    return effectiveVideos.filter(v => {
       const matchesSearch =
         v.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         v.videoNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -63,10 +68,10 @@ export default function Videos() {
         v.creatorName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         v.editorName?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesClient = clientFilter === 'All' || v.clientId === clientFilter;
+      const matchesClient = isClientRole || clientFilter === 'All' || v.clientId === clientFilter;
       return matchesSearch && matchesClient;
     });
-  }, [videos, searchQuery, clientFilter]);
+  }, [effectiveVideos, searchQuery, clientFilter, isClientRole]);
 
   const handleAdvanceStage = (video) => {
     const currentIndex = PRODUCTION_STAGES.indexOf(video.stage);
@@ -104,9 +109,12 @@ export default function Videos() {
     e.preventDefault();
     if (!feedbackText.trim() || !selectedVideo) return;
 
+    const authorName = isClientRole ? 'Aditya Verma (NovaFit)' : 'Operations QA Lead';
+    const authorRole = isClientRole ? 'Client' : 'Internal';
+
     addVideoFeedback(selectedVideo.id, {
-      author: 'Operations QA Lead',
-      role: 'Internal',
+      author: authorName,
+      role: authorRole,
       comment: feedbackText,
       timestamp: feedbackTimestamp
     });
@@ -127,16 +135,18 @@ export default function Videos() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold uppercase tracking-wider text-amber-600">
-              Core Operations Engine
+              {isClientRole ? 'NovaFit UGC Tracker' : 'Core Operations Engine'}
             </span>
             <span className="text-stone-300">•</span>
             <span className="text-xs text-stone-500 font-medium">9-Stage Kanban</span>
           </div>
           <h1 className="text-2xl font-black text-stone-900 tracking-tight">
-            Video Production Pipeline
+            {isClientRole ? 'My Video Production Pipeline' : 'Video Production Pipeline'}
           </h1>
           <p className="text-xs text-stone-500 mt-0.5">
-            Monitor editing queues, client feedback loops, internal QA checks, and 4K final delivery.
+            {isClientRole
+              ? 'Track real-time progress through all 9 production stages for NovaFit Nutrition Pvt Ltd.'
+              : 'Monitor editing queues, client feedback loops, internal QA checks, and 4K final delivery.'}
           </p>
         </div>
 
@@ -170,25 +180,27 @@ export default function Videos() {
           <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search video number, title, creator, editor..."
+            placeholder={isClientRole ? "Search your videos, titles, creators..." : "Search video number, title, creator, editor..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-xs border border-stone-200 rounded-xl bg-stone-50/70 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-amber-500"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <select
-            value={clientFilter}
-            onChange={(e) => setClientFilter(e.target.value)}
-            className="text-xs font-semibold text-stone-700 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 focus:outline-hidden cursor-pointer w-full sm:w-auto"
-          >
-            <option value="All">All Clients</option>
-            {clients.map(c => (
-              <option key={c.id} value={c.id}>{c.companyName || c.clientName}</option>
-            ))}
-          </select>
-        </div>
+        {!isClientRole && (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <select
+              value={clientFilter}
+              onChange={(e) => setClientFilter(e.target.value)}
+              className="text-xs font-semibold text-stone-700 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 focus:outline-hidden cursor-pointer w-full sm:w-auto"
+            >
+              <option value="All">All Clients</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>{c.companyName || c.clientName}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Kanban Board View */}
