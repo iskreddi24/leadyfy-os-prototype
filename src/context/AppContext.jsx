@@ -295,7 +295,36 @@ export function AppProvider({ children }) {
     showToast('Script Status Updated', `Status changed to: ${newStatus}`);
   };
 
+  const updateScript = (id, scriptData) => {
+    setScripts(prev => prev.map(s => s.id === id ? { ...s, ...scriptData } : s));
+    showToast('Script Updated', 'Script details updated.');
+  };
+
   // Operations: Creator
+  const addCreator = (creatorData) => {
+    const newCreator = {
+      id: `cre-${Date.now().toString().slice(-3)}`,
+      completedVideos: 0,
+      activeAssignments: 0,
+      rating: 5.0,
+      availability: 'Available',
+      ...creatorData
+    };
+    setCreators(prev => [newCreator, ...prev]);
+    showToast('Creator Onboarded', `${newCreator.name} added to roster.`);
+    return newCreator;
+  };
+
+  const updateCreator = (id, data) => {
+    setCreators(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+    showToast('Creator Updated', 'Creator details saved.');
+  };
+
+  const deleteCreator = (id) => {
+    setCreators(prev => prev.filter(c => c.id !== id));
+    showToast('Creator Removed', 'Creator removed from roster.', 'warning');
+  };
+
   const updateCreatorAvailability = (creatorId, availability) => {
     setCreators(prev => prev.map(c => c.id === creatorId ? { ...c, availability } : c));
     showToast('Creator Availability Updated', `Creator is now marked as ${availability}`);
@@ -345,6 +374,23 @@ export function AppProvider({ children }) {
       return s;
     }));
     showToast('Checklist Updated', 'Pre-shoot checklist item toggled.');
+  };
+
+  const updateShootChecklist = (shootId, itemKey, val) => {
+    setShoots(prev => prev.map(s => {
+      if (s.id === shootId) {
+        const current = s.checklist || {};
+        const nextVal = typeof val === 'boolean' ? val : !current[itemKey];
+        return {
+          ...s,
+          checklist: {
+            ...current,
+            [itemKey]: nextVal
+          }
+        };
+      }
+      return s;
+    }));
   };
 
   // Operations: Videos & Production Pipeline
@@ -437,6 +483,7 @@ export function AppProvider({ children }) {
             stage: 'Revision',
             revisionCount: newRev,
             clientFeedbackLog: feedbackLog,
+            feedbackLog,
             timeline
           };
         }
@@ -444,6 +491,29 @@ export function AppProvider({ children }) {
       }));
       showToast('Revision Requested', 'Feedback logged and re-assigned to editor queue.', 'warning');
     }
+  };
+
+  const addVideoFeedback = (videoId, feedback) => {
+    setVideos(prev => prev.map(v => {
+      if (v.id === videoId) {
+        const item = {
+          author: feedback.author || (role === 'client' ? 'Client' : 'Internal Team'),
+          role: feedback.role || (role === 'client' ? 'Client' : 'Internal Team'),
+          time: feedback.timestamp || new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
+          timestamp: feedback.timestamp || '00:05',
+          comment: feedback.comment || feedback.text || ''
+        };
+        const currentFeedback = [...(v.feedbackLog || v.clientFeedbackLog || [])];
+        const newFeedback = [...currentFeedback, item];
+        return {
+          ...v,
+          feedbackLog: newFeedback,
+          clientFeedbackLog: newFeedback
+        };
+      }
+      return v;
+    }));
+    showToast('Feedback Logged', 'Comment added to video revision trail.');
   };
 
   // Operations: Tasks
@@ -498,6 +568,40 @@ export function AppProvider({ children }) {
     return newPayment;
   };
 
+  const addPayment = (paymentData) => {
+    const total = Number(paymentData.totalAmount || paymentData.invoiceAmount || 0);
+    const paid = Number(paymentData.amountPaid || paymentData.amountReceived || 0);
+    const newPayment = {
+      id: `pay-${Date.now().toString().slice(-3)}`,
+      invoiceNumber: paymentData.invoiceNumber || `INV-${Date.now().toString().slice(-4)}`,
+      paymentDate: new Date().toISOString().split('T')[0],
+      paidDate: paid > 0 ? new Date().toISOString().split('T')[0] : null,
+      totalAmount: total,
+      invoiceAmount: total,
+      amountPaid: paid,
+      amountReceived: paid,
+      balance: Math.max(0, total - paid),
+      status: paymentData.status || (paid >= total ? 'Paid' : paid > 0 ? 'Partially Paid' : 'Unpaid'),
+      ...paymentData
+    };
+    setPayments(prev => [newPayment, ...prev]);
+    showToast('Invoice Created', `Invoice ${newPayment.invoiceNumber} recorded.`);
+    return newPayment;
+  };
+
+  const updatePaymentStatus = (id, newStatus) => {
+    setPayments(prev => prev.map(p => {
+      if (p.id === id) {
+        const total = p.totalAmount || p.invoiceAmount || 0;
+        const amountPaid = newStatus === 'Paid' ? total : p.amountPaid;
+        const balance = newStatus === 'Paid' ? 0 : p.balance;
+        return { ...p, status: newStatus, amountPaid, amountReceived: amountPaid, balance };
+      }
+      return p;
+    }));
+    showToast('Payment Status Updated', `Status changed to ${newStatus}`);
+  };
+
   // Operations: Expenses
   const addExpense = (expenseData) => {
     const newExpense = {
@@ -516,12 +620,25 @@ export function AppProvider({ children }) {
     showToast('Payout Updated', `Status changed to ${newStatus}`);
   };
 
+  const addCreatorPayout = (payoutData) => {
+    const newPayout = {
+      id: `payout-${Date.now().toString().slice(-3)}`,
+      status: 'Pending',
+      payoutDate: new Date().toISOString().split('T')[0],
+      ...payoutData
+    };
+    setCreatorPayouts(prev => [newPayout, ...prev]);
+    showToast('Payout Scheduled', `Payout for ${newPayout.creatorName} queued.`);
+    return newPayout;
+  };
+
   // Operations: Support Tickets
   const addSupportTicket = (ticketData) => {
     const newTicket = {
       id: `TK-${Date.now().toString().slice(-3)}`,
       createdDate: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
       status: 'Open',
+      messages: [],
       ...ticketData
     };
     setSupportTickets(prev => [newTicket, ...prev]);
@@ -532,6 +649,21 @@ export function AppProvider({ children }) {
   const updateTicketStatus = (ticketId, newStatus) => {
     setSupportTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: newStatus } : t));
     showToast('Ticket Updated', `Ticket #${ticketId} marked as ${newStatus}`);
+  };
+
+  const addTicketReply = (ticketId, messageObj) => {
+    setSupportTickets(prev => prev.map(t => {
+      if (t.id === ticketId) {
+        const messages = [...(t.messages || [])];
+        messages.push({
+          time: 'Just now',
+          ...messageObj
+        });
+        return { ...t, messages };
+      }
+      return t;
+    }));
+    showToast('Reply Sent', 'Message posted to ticket thread.');
   };
 
   // Operations: Notifications
@@ -565,11 +697,25 @@ export function AppProvider({ children }) {
   };
 
   // Computed financial stats
-  const totalRevenue = payments.reduce((acc, p) => acc + (Number(p.amountReceived) || 0), 0);
+  const totalRevenue = payments.reduce((acc, p) => acc + (Number(p.amountReceived || p.amountPaid) || 0), 0);
   const totalExpenses = expenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
   const totalCreatorPayouts = creatorPayouts.filter(p => p.status === 'Paid').reduce((acc, p) => acc + (Number(p.totalPayout) || 0), 0);
   const estimatedNetProfit = totalRevenue - totalExpenses - totalCreatorPayouts;
   const totalReceivables = orders.reduce((acc, o) => acc + (Number(o.outstandingBalance) || 0), 0);
+  const netProfit = estimatedNetProfit;
+  const profitMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0;
+
+  const notify = (arg1, arg2, arg3) => {
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      showToast(arg1.title || 'Notification', arg1.message || '', arg1.type || 'info');
+    } else {
+      showToast(arg1, arg2 || '', arg3 || 'info');
+    }
+  };
+
+  const requestConfirm = (config) => {
+    showConfirm(config);
+  };
 
   return (
     <AppContext.Provider
@@ -577,6 +723,8 @@ export function AppProvider({ children }) {
         // Role & Identity
         role,
         setRole,
+        currentRole: role,
+        setCurrentRole: setRole,
         activeClientId,
         setActiveClientId,
         activeClient: clients.find(c => c.id === activeClientId) || clients[0],
@@ -596,6 +744,7 @@ export function AppProvider({ children }) {
         expenses,
         creatorPayouts,
         supportTickets,
+        tickets: supportTickets,
         notifications,
 
         // Financial summary
@@ -603,14 +752,18 @@ export function AppProvider({ children }) {
         totalExpenses,
         totalCreatorPayouts,
         estimatedNetProfit,
+        netProfit,
+        profitMargin,
         totalReceivables,
 
         // Toast & Modal
         toasts,
         showToast,
+        notify,
         removeToast,
         confirmModal,
         showConfirm,
+        requestConfirm,
         closeConfirm,
 
         // Operations
@@ -620,25 +773,38 @@ export function AppProvider({ children }) {
         addOrder,
         updateOrder,
         addScript,
+        updateScript,
         updateScriptStatus,
+        addCreator,
+        updateCreator,
+        deleteCreator,
         updateCreatorAvailability,
         addShoot,
         updateShoot,
         toggleShootChecklist,
+        updateShootChecklist,
         addVideo,
         updateVideoStage,
         clientReviewVideo,
+        addVideoFeedback,
         addTask,
         toggleTaskStatus,
         deleteTask,
         recordPayment,
+        addPayment,
+        updatePaymentStatus,
         addExpense,
         updatePayoutStatus,
+        addCreatorPayout,
+        updateCreatorPayoutStatus: updatePayoutStatus,
         addSupportTicket,
+        addTicket: addSupportTicket,
         updateTicketStatus,
+        addTicketReply,
         markNotificationRead,
         markAllNotificationsRead,
-        resetAllData
+        resetAllData,
+        resetToDemoData: resetAllData
       }}
     >
       {children}

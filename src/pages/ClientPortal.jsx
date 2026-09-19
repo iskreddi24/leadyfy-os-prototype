@@ -75,8 +75,9 @@ export default function ClientPortal() {
 
   const handleRequestVideoRevision = (video) => {
     if (!feedbackText.trim()) return;
+    const authorName = activeClient?.clientName || activeClient?.name || 'Aditya Verma (NovaFit)';
     addVideoFeedback(video.id, {
-      author: `${activeClient?.clientName} (${activeClient?.companyName})`,
+      author: authorName,
       role: 'Client',
       comment: feedbackText,
       timestamp: feedbackTimestamp

@@ -248,20 +248,28 @@ export default function Shoots() {
 
                 {/* Right Actions & Status Transitions */}
                 <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-2 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-stone-100">
-                  <select
-                    value={shoot.shootStatus}
-                    onChange={(e) => handleStatusChange(shoot.id, e.target.value)}
-                    className="px-3 py-1.5 text-xs font-bold text-stone-800 bg-stone-50 border border-stone-300 rounded-lg cursor-pointer"
-                  >
-                    <option>Scheduled</option>
-                    <option>Confirmed</option>
-                    <option>In Progress</option>
-                    <option>Completed</option>
-                    <option>Reshoot Required</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedShoot(shoot)}
+                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-2xs"
+                    >
+                      View Call Sheet
+                    </button>
+                    <select
+                      value={shoot.shootStatus}
+                      onChange={(e) => handleStatusChange(shoot.id, e.target.value)}
+                      className="px-3 py-1.5 text-xs font-bold text-stone-800 bg-stone-50 border border-stone-300 rounded-lg cursor-pointer"
+                    >
+                      <option>Scheduled</option>
+                      <option>Confirmed</option>
+                      <option>In Progress</option>
+                      <option>Completed</option>
+                      <option>Reshoot Required</option>
+                    </select>
+                  </div>
 
                   <a
-                    href={shoot.rawFootageLink}
+                    href={shoot.rawFootageLink || 'https://drive.google.com'}
                     target="_blank"
                     rel="noreferrer"
                     className="px-3 py-1.5 bg-stone-900 hover:bg-black text-amber-400 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors"
@@ -419,6 +427,146 @@ export default function Shoots() {
           </form>
         </Modal>
       )}
+
+      {/* Shoot Call Sheet & Details Modal */}
+      {selectedShoot && (() => {
+        const creator = creators.find(c => c.id === selectedShoot.creatorId || c.name === selectedShoot.creatorName);
+        const checklist = selectedShoot.checklist || {};
+        return (
+          <Modal
+            isOpen={true}
+            onClose={() => setSelectedShoot(null)}
+            title={`Shoot Call Sheet: ${selectedShoot.title}`}
+            subtitle={`Client: ${selectedShoot.clientName} • Status: ${selectedShoot.shootStatus}`}
+            maxWidth="max-w-2xl"
+          >
+            <div className="space-y-5">
+              {/* Creator Profile Card */}
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-amber-100 border border-amber-300 shrink-0">
+                    <img
+                      src={creator?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                      alt={selectedShoot.creatorName}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">
+                        Confirmed Creator
+                      </span>
+                      <span className="text-xs text-stone-500">{creator?.location || 'Hyderabad, Telangana'}</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 mt-0.5">{selectedShoot.creatorName}</h4>
+                    <p className="text-xs text-stone-500">
+                      Niches: <span className="text-stone-700 font-medium">{creator?.niche?.join(', ') || 'Fitness, UGC Reviews'}</span> • Rate: ₹{(creator?.rates || 6500).toLocaleString('en-IN')}/vid
+                    </p>
+                  </div>
+                </div>
+
+                <Badge status={selectedShoot.shootStatus} />
+              </div>
+
+              {/* Shoot Logistics Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-stone-50 rounded-xl border border-stone-200 text-xs">
+                <div>
+                  <span className="text-stone-400 font-medium">Date & Time:</span>
+                  <p className="text-stone-800 font-bold mt-0.5 flex items-center gap-1.5">
+                    <CalendarIcon className="w-3.5 h-3.5 text-stone-500" />
+                    {selectedShoot.date} ({selectedShoot.time})
+                  </p>
+                </div>
+                <div>
+                  <span className="text-stone-400 font-medium">Studio / Location:</span>
+                  <p className="text-stone-800 font-bold mt-0.5 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-stone-500" />
+                    {selectedShoot.location}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-stone-400 font-medium">Cameraman & Gear:</span>
+                  <p className="text-stone-800 font-bold mt-0.5">{selectedShoot.cameraman || 'Arjun Das'}</p>
+                </div>
+                <div>
+                  <span className="text-stone-400 font-medium">Director / Shoot Manager:</span>
+                  <p className="text-stone-800 font-bold mt-0.5">{selectedShoot.shootManager || 'Sneha Patel'}</p>
+                </div>
+              </div>
+
+              {/* Pre-Shoot & Post-Shoot Checklist */}
+              <div>
+                <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider mb-2">
+                  Shoot Execution Checklist
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    { key: 'scriptApproved', label: 'Script Approved & Printed' },
+                    { key: 'productDispatched', label: 'Client Product Received at Studio' },
+                    { key: 'creatorConfirmed', label: 'Creator Briefed & Call Confirmed' },
+                    { key: 'locationBooked', label: 'Studio Booked & Lighting Rigged' }
+                  ].map(item => {
+                    const isChecked = !!checklist[item.key];
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => {
+                          updateShootChecklist(selectedShoot.id, item.key, !isChecked);
+                          setSelectedShoot(prev => ({
+                            ...prev,
+                            checklist: { ...prev.checklist, [item.key]: !isChecked }
+                          }));
+                        }}
+                        className={`flex items-center gap-2 p-2.5 rounded-lg border text-left text-xs transition-colors cursor-pointer ${
+                          isChecked
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-medium'
+                            : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                        }`}
+                      >
+                        {isChecked ? (
+                          <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                        ) : (
+                          <Square className="w-4 h-4 text-stone-400 shrink-0" />
+                        )}
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Special Notes & Raw Footage */}
+              <div className="p-3 bg-stone-100 rounded-xl text-xs space-y-1">
+                <span className="font-bold text-stone-700">Special Director Notes:</span>
+                <p className="text-stone-600">
+                  {selectedShoot.specialNotes || 'Bring blender, glass shaker, ice bucket, clean kitchen countertop setup.'}
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-stone-200">
+                <a
+                  href={selectedShoot.rawFootageLink || 'https://drive.google.com'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-2 bg-stone-900 hover:bg-black text-amber-400 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors"
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  <span>Open Raw Footage Folder</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedShoot(null)}
+                  className="px-4 py-2 text-xs font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }

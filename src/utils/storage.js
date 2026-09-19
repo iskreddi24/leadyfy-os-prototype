@@ -3,7 +3,7 @@
  * Handles localStorage reading, writing, updating, and event dispatching.
  */
 
-const STORAGE_PREFIX = 'leadyfy_os_';
+const STORAGE_PREFIX = 'leadyfy_os_v3_';
 
 export function getStorageKey(key) {
   return `${STORAGE_PREFIX}${key}`;

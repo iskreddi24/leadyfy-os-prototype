@@ -13,7 +13,9 @@ import {
   Sparkles,
   LayoutGrid,
   ListFilter,
-  Eye
+  Eye,
+  FileText,
+  UserCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import Badge from '../components/common/Badge';
@@ -36,6 +38,7 @@ export default function Videos() {
     videos,
     clients,
     creators,
+    scripts,
     employees,
     updateVideoStage,
     addVideoFeedback,
@@ -342,119 +345,183 @@ export default function Videos() {
       )}
 
       {/* Video Details & Review Modal */}
-      {selectedVideo && (
-        <Modal
-          isOpen={true}
-          onClose={() => setSelectedVideo(null)}
-          title={`Video Workfile: ${selectedVideo.videoNumber} - ${selectedVideo.title}`}
-          subtitle={`Client: ${selectedVideo.clientName} • Stage: ${selectedVideo.stage}`}
-          maxWidth="max-w-3xl"
-        >
-          <div className="space-y-4">
-            {/* Stage Selector & Action Ribbon */}
-            <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-stone-600">Current Stage:</span>
-                <select
-                  value={selectedVideo.stage}
-                  onChange={(e) => {
-                    updateVideoStage(selectedVideo.id, e.target.value);
-                    setSelectedVideo({ ...selectedVideo, stage: e.target.value });
-                  }}
-                  className="text-xs font-bold text-stone-900 bg-white border border-stone-300 rounded-lg px-2.5 py-1 cursor-pointer"
-                >
-                  {PRODUCTION_STAGES.map(s => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
+      {selectedVideo && (() => {
+        const creator = creators.find(c => c.id === selectedVideo.creatorId || c.name === selectedVideo.creatorName);
+        const script = scripts.find(s => s.id === selectedVideo.scriptId || s.videoNumber === selectedVideo.videoNumber || s.title?.toLowerCase().includes(selectedVideo.videoNumber?.toLowerCase()));
+        const currentStageIdx = PRODUCTION_STAGES.indexOf(selectedVideo.stage);
+
+        return (
+          <Modal
+            isOpen={true}
+            onClose={() => setSelectedVideo(null)}
+            title={`Video Workfile: ${selectedVideo.videoNumber} - ${selectedVideo.title}`}
+            subtitle={`Client: ${selectedVideo.clientName} • Stage: ${selectedVideo.stage}`}
+            maxWidth="max-w-3xl"
+          >
+            <div className="space-y-4">
+              {/* Status Pipeline Visual Step Tracker */}
+              <div className="p-3 bg-stone-900 rounded-xl text-stone-200">
+                <div className="flex items-center justify-between text-xs font-bold mb-2">
+                  <span className="text-amber-400 uppercase tracking-wider text-[10px]">Production Pipeline Status</span>
+                  <span className="text-stone-300 font-mono text-[11px]">{selectedVideo.stage} ({currentStageIdx + 1}/{PRODUCTION_STAGES.length})</span>
+                </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1 text-center">
+                  {PRODUCTION_STAGES.map((stg, i) => {
+                    const isDone = i < currentStageIdx;
+                    const isCurrent = i === currentStageIdx;
+                    return (
+                      <button
+                        key={stg}
+                        type="button"
+                        onClick={() => {
+                          updateVideoStage(selectedVideo.id, stg);
+                          setSelectedVideo({ ...selectedVideo, stage: stg });
+                        }}
+                        className={`p-1.5 rounded text-[9px] font-bold transition-all cursor-pointer truncate ${
+                          isCurrent
+                            ? 'bg-amber-500 text-black shadow-xs ring-1 ring-amber-400'
+                            : isDone
+                            ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/40 hover:bg-emerald-900'
+                            : 'bg-stone-800/60 text-stone-500 hover:bg-stone-800'
+                        }`}
+                        title={`Click to set stage to: ${stg}`}
+                      >
+                        {stg.replace(' Footage', '').replace(' Approved', ' OK')}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <a
-                  href={selectedVideo.driveFolder}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-1.5 bg-stone-900 hover:bg-black text-amber-400 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Google Drive Assets</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Video Preview Box */}
-            <div className="relative aspect-video bg-stone-900 rounded-xl overflow-hidden flex flex-col items-center justify-center text-white border border-stone-800">
-              <Film className="w-12 h-12 text-amber-500 mb-2" />
-              <p className="text-sm font-bold">UGC 9:16 Preview Player</p>
-              <p className="text-xs text-stone-400 mt-1">
-                Resolution: 1080x1920 • Aspect: 9:16 Vertical Reel
-              </p>
-            </div>
-
-            {/* Existing Feedback Trail */}
-            <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-stone-800 uppercase">Review Feedback Trail</h4>
-                <span className="text-[11px] text-stone-400">{selectedVideo.feedbackLog?.length || 0} Comments</span>
-              </div>
-
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {selectedVideo.feedbackLog?.map((fb, idx) => (
-                  <div key={idx} className="p-2.5 bg-white rounded-lg border border-stone-200 text-xs">
-                    <div className="flex items-center justify-between font-bold text-stone-900">
-                      <span>{fb.author} ({fb.role})</span>
-                      <span className="text-amber-700 font-mono">@{fb.timestamp}</span>
+              {/* Creator & Script Dual Card */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Creator Profile */}
+                <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full inline-block mb-2">
+                    Assigned Creator
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-full overflow-hidden bg-amber-100 border border-amber-300 shrink-0">
+                      <img
+                        src={creator?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                        alt={selectedVideo.creatorName}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                    <p className="text-stone-600 mt-1">{fb.comment}</p>
+                    <div>
+                      <h4 className="text-xs font-bold text-stone-900">{selectedVideo.creatorName}</h4>
+                      <p className="text-[11px] text-stone-500">{creator?.location || 'Hyderabad, Telangana'}</p>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        Rate: <strong className="text-stone-800">₹{(creator?.rates || 6500).toLocaleString('en-IN')}/video</strong>
+                      </p>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Append Internal Feedback */}
-            <form onSubmit={handleAddFeedback} className="flex items-center gap-2">
-              <div className="w-24 shrink-0">
+                {/* Linked Script */}
+                <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-full">
+                      Production Script
+                    </span>
+                    <Badge status={script?.status || 'Approved'} size="xs" />
+                  </div>
+                  <h4 className="text-xs font-bold text-stone-900 truncate">{script?.title || selectedVideo.title}</h4>
+                  <p className="text-[11px] text-stone-500 mt-0.5">Writer: {script?.writer || 'Rahul Verma'} • {script?.language || 'Hinglish'}</p>
+                  <p className="text-[11px] text-stone-600 line-clamp-2 mt-1 italic">
+                    "{script?.scriptText?.slice(0, 100) || 'Hook: If your protein shake tastes like cement chalk, stop punishing yourself...'}..."
+                  </p>
+                </div>
+              </div>
+
+              {/* Video Preview Player Box */}
+              <div className="relative aspect-video bg-stone-900 rounded-xl overflow-hidden flex flex-col items-center justify-center text-white border border-stone-800">
+                <Film className="w-10 h-10 text-amber-500 mb-2" />
+                <p className="text-xs font-bold">UGC 9:16 Preview Player</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">
+                  Resolution: 1080x1920 • Aspect: 9:16 Vertical Reel
+                </p>
+                <div className="absolute top-3 right-3 flex items-center gap-2">
+                  <a
+                    href={selectedVideo.driveFolder || selectedVideo.driveLink || 'https://drive.google.com'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1 bg-black/70 hover:bg-black text-amber-400 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors border border-stone-700"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>Raw Drive</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Feedback Trail */}
+              <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-stone-800 uppercase">Review Feedback Trail</h4>
+                  <span className="text-[11px] text-stone-400">
+                    {(selectedVideo.feedbackLog?.length || selectedVideo.clientFeedbackLog?.length || 0)} Comments
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-36 overflow-y-auto">
+                  {(selectedVideo.feedbackLog || selectedVideo.clientFeedbackLog || []).map((fb, idx) => (
+                    <div key={idx} className="p-2.5 bg-white rounded-lg border border-stone-200 text-xs">
+                      <div className="flex items-center justify-between font-bold text-stone-900">
+                        <span>{fb.author} <span className="text-stone-400 font-normal">({fb.role || 'Reviewer'})</span></span>
+                        <span className="text-amber-700 font-mono">@{fb.timestamp || fb.time}</span>
+                      </div>
+                      <p className="text-stone-600 mt-1">{fb.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Append Internal Feedback */}
+              <form onSubmit={handleAddFeedback} className="flex items-center gap-2">
+                <div className="w-20 shrink-0">
+                  <input
+                    type="text"
+                    value={feedbackTimestamp}
+                    onChange={(e) => setFeedbackTimestamp(e.target.value)}
+                    placeholder="00:08"
+                    className="w-full px-2 py-2 text-xs font-mono border border-stone-300 rounded-lg"
+                  />
+                </div>
                 <input
                   type="text"
-                  value={feedbackTimestamp}
-                  onChange={(e) => setFeedbackTimestamp(e.target.value)}
-                  placeholder="00:08"
-                  className="w-full px-2 py-2 text-xs font-mono border border-stone-300 rounded-lg"
+                  required
+                  placeholder="Log client revision note or editor feedback..."
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  className="flex-1 px-3 py-2 text-xs border border-stone-300 rounded-lg"
                 />
-              </div>
-              <input
-                type="text"
-                required
-                placeholder="Log internal feedback, sound correction, or transition fix..."
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-                className="flex-1 px-3 py-2 text-xs border border-stone-300 rounded-lg"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-stone-900 hover:bg-black text-white text-xs font-bold rounded-lg cursor-pointer shrink-0"
-              >
-                Log Note
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-stone-900 hover:bg-black text-white text-xs font-bold rounded-lg cursor-pointer shrink-0"
+                >
+                  Log Note
+                </button>
+              </form>
 
-            <div className="flex items-center justify-between pt-3 border-t border-stone-200">
-              <button
-                onClick={() => setSelectedVideo(null)}
-                className="px-4 py-2 text-xs font-bold text-stone-600 hover:text-stone-900 cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => handleAdvanceStage(selectedVideo)}
-                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold rounded-xl shadow-xs cursor-pointer"
-              >
-                Advance to Next Stage
-              </button>
+              <div className="flex items-center justify-between pt-3 border-t border-stone-200">
+                <button
+                  onClick={() => setSelectedVideo(null)}
+                  className="px-4 py-2 text-xs font-bold text-stone-600 hover:text-stone-900 cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => handleAdvanceStage(selectedVideo)}
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                >
+                  Advance to Next Stage
+                </button>
+              </div>
             </div>
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        );
+      })()}
     </div>
   );
 }

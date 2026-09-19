@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Package,
   Film,
+  FileText,
   Calendar,
   CreditCard,
   Plus,
@@ -25,6 +26,7 @@ export default function OrderDetails() {
     updateOrder,
     clients,
     videos,
+    scripts,
     addVideo,
     notify
   } = useApp();
@@ -212,6 +214,54 @@ export default function OrderDetails() {
                   className="text-xs font-bold text-amber-600 hover:text-amber-700 cursor-pointer"
                 >
                   View in Pipeline →
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Scripts Allocated to this Order */}
+      <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-amber-500" />
+            <h2 className="text-base font-bold text-stone-900">
+              Allocated Scripts ({scripts.filter(s => s.orderId === order.id || s.clientId === order.clientId).length})
+            </h2>
+          </div>
+
+          <button
+            onClick={() => navigate('/scripts')}
+            className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <span>Open All Scripts</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {scripts.filter(s => s.orderId === order.id || s.clientId === order.clientId).length === 0 ? (
+          <p className="text-xs text-stone-400 py-6 text-center">No scripts written for this order yet.</p>
+        ) : (
+          <div className="divide-y divide-stone-100">
+            {scripts.filter(s => s.orderId === order.id || s.clientId === order.clientId).map(script => (
+              <div key={script.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-amber-700">{script.videoNumber}</span>
+                    <h4 className="text-xs font-bold text-stone-900">{script.title}</h4>
+                    <Badge status={script.status} size="xs" />
+                  </div>
+                  <p className="text-[11px] text-stone-500 mt-1">
+                    Writer: <span className="text-stone-700 font-semibold">{script.writer}</span> • Assigned Creator: <span className="text-amber-700 font-semibold">{script.creatorName}</span> • Revisions: #{script.revisionCount}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => navigate('/scripts')}
+                  className="text-xs font-bold text-amber-600 hover:text-amber-700 cursor-pointer"
+                >
+                  Read Script →
                 </button>
               </div>
             ))}
