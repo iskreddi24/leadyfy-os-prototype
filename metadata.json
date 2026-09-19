@@ -1,0 +1,6 @@
+{
+  "name": "Leadyfy OS",
+  "description": "Internal Agency Management & Operations Platform for UGC & Digital Marketing Agencies",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
